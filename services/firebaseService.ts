@@ -1,19 +1,20 @@
-
-import { initializeApp } from "firebase/app";
-import { 
-  getFirestore, 
-  collection, 
-  addDoc, 
-  getDocs, 
-  updateDoc, 
-  deleteDoc, 
-  doc, 
-  query, 
+import { initializeApp } from 'firebase/app';
+import {
+  getFirestore,
+  collection,
+  addDoc,
+  getDocs,
+  updateDoc,
+  deleteDoc,
+  doc,
+  query,
   orderBy,
   serverTimestamp,
-  Timestamp
-} from "firebase/firestore";
-import { PromptItem } from "../types";
+  Timestamp,
+  setDoc,
+  getDoc,
+} from 'firebase/firestore';
+import { PromptItem } from '../types';
 
 const firebaseConfig = {
   apiKey: (import.meta as any).env.VITE_FIREBASE_API_KEY,
@@ -24,10 +25,11 @@ const firebaseConfig = {
   appId: (import.meta as any).env.VITE_FIREBASE_APP_ID
 };
 
-// Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
-const PROMPTS_COLLECTION = "prompts";
+const PROMPTS_COLLECTION = 'prompts';
+const SETTINGS_COLLECTION = 'settings';
+const DELETED_IDS_DOC = 'deleted_ids';
 
 export const savePrompt = async (prompt: Omit<PromptItem, 'id'>): Promise<string> => {
   const docRef = await addDoc(collection(db, PROMPTS_COLLECTION), {
@@ -39,7 +41,7 @@ export const savePrompt = async (prompt: Omit<PromptItem, 'id'>): Promise<string
 };
 
 export const getPrompts = async (): Promise<PromptItem[]> => {
-  const q = query(collection(db, PROMPTS_COLLECTION), orderBy("updatedAt", "desc"));
+  const q = query(collection(db, PROMPTS_COLLECTION), orderBy('updatedAt', 'desc'));
   const querySnapshot = await getDocs(q);
   return querySnapshot.docs.map(doc => {
     const data = doc.data();
@@ -63,4 +65,26 @@ export const updatePrompt = async (id: string, updates: Partial<PromptItem>): Pr
 export const deletePrompt = async (id: string): Promise<void> => {
   const docRef = doc(db, PROMPTS_COLLECTION, id);
   await deleteDoc(docRef);
+};
+
+export const getDeletedIds = async (): Promise<string[]> => {
+  try {
+    const docRef = doc(db, SETTINGS_COLLECTION, DELETED_IDS_DOC);
+    const snap = await getDoc(docRef);
+    if (snap.exists()) {
+      return snap.data().ids || [];
+    }
+    return [];
+  } catch (e) {
+    return [];
+  }
+};
+
+export const saveDeletedIds = async (ids: string[]): Promise<void> => {
+  try {
+    const docRef = doc(db, SETTINGS_COLLECTION, DELETED_IDS_DOC);
+    await setDoc(docRef, { ids });
+  } catch (e) {
+    console.error('Error saving deleted ids:', e);
+  }
 };
