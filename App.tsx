@@ -13,7 +13,6 @@ import ConfirmModal from './components/ConfirmModal';
 const DELETED_IDS_KEY = 'nano-banana-deleted-ids';
 
 const App: React.FC = () => {
-  console.log("App: Rendering...");
   const [activeTab, setActiveTab] = useState<TabType>(TabType.LIBRARY);
   const [libraryPrompts, setLibraryPrompts] = useState<PromptItem[]>([]);
   const [customPrompts, setCustomPrompts] = useState<PromptItem[]>([]);
@@ -22,7 +21,6 @@ const App: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
   const [selectedPrompt, setSelectedPrompt] = useState<PromptItem | null>(null);
   const [editingPrompt, setEditingPrompt] = useState<PromptItem | null>(null);
   const [manualEditPrompt, setManualEditPrompt] = useState<PromptItem | null>(null);
@@ -35,39 +33,27 @@ const App: React.FC = () => {
       try {
         const fetchedPrompts = await parsePromptsFromMarkdown();
         setLibraryPrompts(fetchedPrompts);
-
         try {
           const firestorePrompts = await getPrompts();
           setCustomPrompts(firestorePrompts);
         } catch (fsError) {
-          console.error("Error loading Firestore data:", fsError);
+          console.error('Error loading Firestore data:', fsError);
           const savedCustom = localStorage.getItem('nano-banana-custom-prompts');
-          if (savedCustom) {
-            setCustomPrompts(JSON.parse(savedCustom));
-          }
+          if (savedCustom) setCustomPrompts(JSON.parse(savedCustom));
         }
-
         const savedDeleted = localStorage.getItem(DELETED_IDS_KEY);
         if (savedDeleted) {
-          try {
-            setDeletedIds(JSON.parse(savedDeleted));
-          } catch (e) {
-            localStorage.removeItem(DELETED_IDS_KEY);
-          }
+          try { setDeletedIds(JSON.parse(savedDeleted)); }
+          catch (e) { localStorage.removeItem(DELETED_IDS_KEY); }
         }
-
         const savedFavorites = localStorage.getItem('nano-banana-favorites');
         if (savedFavorites) {
-          try {
-            setFavorites(JSON.parse(savedFavorites));
-          } catch (e) {
-            console.error("Error parsing favorites:", e);
-            localStorage.removeItem('nano-banana-favorites');
-          }
+          try { setFavorites(JSON.parse(savedFavorites)); }
+          catch (e) { localStorage.removeItem('nano-banana-favorites'); }
         }
       } catch (error) {
-        console.error("Error loading initial data:", error);
-        setError("Failed to load library data. You can still use the Editor.");
+        console.error('Error loading initial data:', error);
+        setError('Failed to load library data. You can still use the Editor.');
       } finally {
         setIsLoading(false);
       }
@@ -91,11 +77,8 @@ const App: React.FC = () => {
     const merged = [...libraryPrompts];
     customPrompts.forEach(custom => {
       const index = merged.findIndex(p => p.id === custom.id);
-      if (index !== -1) {
-        merged[index] = custom;
-      } else {
-        merged.push(custom);
-      }
+      if (index !== -1) { merged[index] = custom; }
+      else { merged.push(custom); }
     });
     return merged.filter(p => !deletedIds.includes(p.id));
   }, [libraryPrompts, customPrompts, deletedIds]);
@@ -120,11 +103,7 @@ const App: React.FC = () => {
   const toggleFavorite = (item: PromptItem) => {
     setFavorites(prev => {
       const exists = prev.find(p => p.id === item.id);
-      if (exists) {
-        return prev.filter(p => p.id !== item.id);
-      } else {
-        return [...prev, item];
-      }
+      return exists ? prev.filter(p => p.id !== item.id) : [...prev, item];
     });
   };
 
@@ -141,26 +120,20 @@ const App: React.FC = () => {
         setCustomPrompts(prev => [newItem, ...prev]);
       }
     } catch (error) {
-      console.error("Error saving to Firestore:", error);
+      console.error('Error saving to Firestore:', error);
       setCustomPrompts(prev => {
         const exists = prev.find(p => p.id === item.id);
-        if (exists) {
-          return prev.map(p => p.id === item.id ? item : p);
-        } else {
-          return [item, ...prev];
-        }
+        if (exists) return prev.map(p => p.id === item.id ? item : p);
+        return [item, ...prev];
       });
     }
   };
 
-  const handleDeleteCustom = async (id: string) => {
+  const handleDeletePrompt = async (id: string) => {
     const isCustom = customPrompts.some(p => p.id === id);
     if (isCustom) {
-      try {
-        await deleteFromFirestore(id);
-      } catch (error) {
-        console.error("Error deleting from Firestore:", error);
-      }
+      try { await deleteFromFirestore(id); }
+      catch (error) { console.error('Error deleting from Firestore:', error); }
       setCustomPrompts(prev => prev.filter(p => p.id !== id));
     }
     setDeletedIds(prev => [...new Set([...prev, id])]);
@@ -211,7 +184,13 @@ const App: React.FC = () => {
         ) : (
           <>
             {activeTab === TabType.EDITOR ? (
-              <EditorTab initialItem={manualEditPrompt} onSave={handleSaveCustom} onClear={() => setManualEditPrompt(null)} />
+              <EditorTab
+                prompts={customPrompts.filter(p => !deletedIds.includes(p.id))}
+                onSavePrompt={handleSaveCustom}
+                onDeletePrompt={(id) => setPromptToDelete(id)}
+                initialEditPrompt={manualEditPrompt}
+                onClearInitialEdit={() => setManualEditPrompt(null)}
+              />
             ) : (
               <>
                 {filteredPrompts.length > 0 ? (
@@ -251,7 +230,7 @@ const App: React.FC = () => {
         onClose={() => setPromptToDelete(null)}
         onConfirm={() => {
           if (promptToDelete) {
-            handleDeleteCustom(promptToDelete);
+            handleDeletePrompt(promptToDelete);
             setPromptToDelete(null);
           }
         }}
