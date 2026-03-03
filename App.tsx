@@ -37,7 +37,7 @@ const App: React.FC = () => {
           const firestorePrompts = await getPrompts();
           setCustomPrompts(firestorePrompts);
         } catch (fsError) {
-          console.error('Error loading Firestore data:', fsError);
+          console.error('Error loading Firestore:', fsError);
           const savedCustom = localStorage.getItem('nano-banana-custom-prompts');
           if (savedCustom) setCustomPrompts(JSON.parse(savedCustom));
         }
@@ -52,8 +52,7 @@ const App: React.FC = () => {
           catch (e) { localStorage.removeItem('nano-banana-favorites'); }
         }
       } catch (error) {
-        console.error('Error loading initial data:', error);
-        setError('Failed to load library data. You can still use the Editor.');
+        setError('Failed to load library data.');
       } finally {
         setIsLoading(false);
       }
@@ -77,27 +76,20 @@ const App: React.FC = () => {
     const merged = [...libraryPrompts];
     customPrompts.forEach(custom => {
       const index = merged.findIndex(p => p.id === custom.id);
-      if (index !== -1) { merged[index] = custom; }
-      else { merged.push(custom); }
+      if (index !== -1) merged[index] = custom;
+      else merged.push(custom);
     });
     return merged.filter(p => !deletedIds.includes(p.id));
   }, [libraryPrompts, customPrompts, deletedIds]);
 
   const filteredPrompts = useMemo(() => {
     let list: PromptItem[] = [];
-    if (activeTab === TabType.LIBRARY) {
-      list = allPrompts;
-    } else if (activeTab === TabType.FAVORITES) {
-      list = favorites.filter(p => !deletedIds.includes(p.id));
-    } else if (activeTab === TabType.EDITOR) {
-      list = customPrompts.filter(p => !deletedIds.includes(p.id));
-    }
+    if (activeTab === TabType.LIBRARY) list = allPrompts;
+    else if (activeTab === TabType.FAVORITES) list = favorites.filter(p => !deletedIds.includes(p.id));
+    else if (activeTab === TabType.EDITOR) list = customPrompts.filter(p => !deletedIds.includes(p.id));
     if (!searchQuery) return list;
-    const query = searchQuery.toLowerCase();
-    return list.filter(p =>
-      p.title.toLowerCase().includes(query) ||
-      p.content.toLowerCase().includes(query)
-    );
+    const q = searchQuery.toLowerCase();
+    return list.filter(p => p.title.toLowerCase().includes(q) || p.content.toLowerCase().includes(q));
   }, [activeTab, allPrompts, favorites, customPrompts, searchQuery, deletedIds]);
 
   const toggleFavorite = (item: PromptItem) => {
@@ -116,11 +108,9 @@ const App: React.FC = () => {
       } else {
         const { id, ...promptData } = item;
         const newId = await savePrompt(promptData);
-        const newItem = { ...item, id: newId };
-        setCustomPrompts(prev => [newItem, ...prev]);
+        setCustomPrompts(prev => [{ ...item, id: newId }, ...prev]);
       }
     } catch (error) {
-      console.error('Error saving to Firestore:', error);
       setCustomPrompts(prev => {
         const exists = prev.find(p => p.id === item.id);
         if (exists) return prev.map(p => p.id === item.id ? item : p);
@@ -132,8 +122,7 @@ const App: React.FC = () => {
   const handleDeletePrompt = async (id: string) => {
     const isCustom = customPrompts.some(p => p.id === id);
     if (isCustom) {
-      try { await deleteFromFirestore(id); }
-      catch (error) { console.error('Error deleting from Firestore:', error); }
+      try { await deleteFromFirestore(id); } catch (e) { /* fallback */ }
       setCustomPrompts(prev => prev.filter(p => p.id !== id));
     }
     setDeletedIds(prev => [...new Set([...prev, id])]);
@@ -145,13 +134,13 @@ const App: React.FC = () => {
     setActiveTab(TabType.EDITOR);
   };
 
-  const handleCopy = (text: string) => {
-    navigator.clipboard.writeText(text);
-  };
-
   return (
     <div className="min-h-screen bg-slate-950 text-white">
-      <Header activeTab={activeTab} onTabChange={setActiveTab} />
+      <Header
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        favoritesCount={favorites.filter(p => !deletedIds.includes(p.id)).length}
+      />
       <main className="max-w-7xl mx-auto px-4 py-10">
         <div className="mb-8">
           <h1 className="text-4xl font-black tracking-tighter uppercase text-white mb-2">
@@ -205,7 +194,7 @@ const App: React.FC = () => {
                         onEditAI={setEditingPrompt}
                         onEditManual={handleEditManual}
                         onDelete={setPromptToDelete}
-                        onCopy={handleCopy}
+                        onCopy={(text) => navigator.clipboard.writeText(text)}
                       />
                     ))}
                   </div>
@@ -235,7 +224,7 @@ const App: React.FC = () => {
           }
         }}
         title="¿Eliminar prompt?"
-        message="Esta acción no se puede deshacer. El prompt se eliminará permanentemente de tu colección."
+        message="Esta acción no se puede deshacer. El prompt se eliminará permanentemente."
       />
 
       <footer className="border-t border-slate-800/50 mt-20 py-8 text-center text-slate-600 text-xs">
