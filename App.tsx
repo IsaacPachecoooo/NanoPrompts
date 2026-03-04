@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { PromptItem, TabType } from './types';
 import { parsePromptsFromMarkdown } from './services/promptParser';
-import { getPrompts, savePrompt, updatePrompt, deletePrompt as deleteFromFirestore } from './services/firebaseService';
+import { getPrompts, savePrompt, updatePrompt, deletePrompt as deleteFromFirestore, getDeletedIds, saveDeletedIds } from './services/firebaseService';
 import Header from './components/Header';
 import SearchBar from './components/SearchBar';
 import PromptCard from './components/PromptCard';
@@ -12,11 +12,20 @@ import ConfirmModal from './components/ConfirmModal';
 
 const DELETED_IDS_KEY = 'nano-banana-deleted-ids';
 
+// Helper to load deleted ids synchronously from localStorage
+function loadInitialDeletedIds(): string[] {
+  try {
+    const saved = localStorage.getItem(DELETED_IDS_KEY);
+    if (saved) return JSON.parse(saved);
+  } catch (e) {}
+  return [];
+}
+
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>(TabType.LIBRARY);
   const [libraryPrompts, setLibraryPrompts] = useState<PromptItem[]>([]);
   const [customPrompts, setCustomPrompts] = useState<PromptItem[]>([]);
-  const [deletedIds, setDeletedIds] = useState<string[]>([]);
+  const [deletedIds, setDeletedIds] = useState<string[]>(loadInitialDeletedIds);
   const [favorites, setFavorites] = useState<PromptItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -25,6 +34,10 @@ const App: React.FC = () => {
   const [editingPrompt, setEditingPrompt] = useState<PromptItem | null>(null);
   const [manualEditPrompt, setManualEditPrompt] = useState<PromptItem | null>(null);
   const [promptToDelete, setPromptToDelete] = useState<string | null>(null);
+
+  // Refs to prevent saving on initial mount
+  const isFirstMount = useRef(true);
+  const isDeletedIdsLoaded = useRef(false);
 
   useEffect(() => {
     const loadData = async () => {
@@ -41,11 +54,18 @@ const App: React.FC = () => {
           const savedCustom = localStorage.getItem('nano-banana-custom-prompts');
           if (savedCustom) setCustomPrompts(JSON.parse(savedCustom));
         }
-        const savedDeleted = localStorage.getItem(DELETED_IDS_KEY);
-        if (savedDeleted) {
-          try { setDeletedIds(JSON.parse(savedDeleted)); }
-          catch (e) { localStorage.removeItem(DELETED_IDS_KEY); }
+
+        // Load deleted ids from Firebase (persistent across devices)
+        try {
+          const firebaseDeletedIds = await getDeletedIds();
+          if (firebaseDeletedIds.length > 0) {
+            setDeletedIds(prev => [...new Set([...prev, ...firebaseDeletedIds])]);
+          }
+        } catch (e) {
+          // fallback: already loaded from localStorage in initial state
         }
+        isDeletedIdsLoaded.current = true;
+
         const savedFavorites = localStorage.getItem('nano-banana-favorites');
         if (savedFavorites) {
           try { setFavorites(JSON.parse(savedFavorites)); }
@@ -68,8 +88,17 @@ const App: React.FC = () => {
     localStorage.setItem('nano-banana-custom-prompts', JSON.stringify(customPrompts));
   }, [customPrompts]);
 
+  // Save deletedIds to both localStorage and Firebase, but skip the very first render
   useEffect(() => {
+    if (isFirstMount.current) {
+      isFirstMount.current = false;
+      return;
+    }
     localStorage.setItem(DELETED_IDS_KEY, JSON.stringify(deletedIds));
+    // Also persist to Firebase when ids have been loaded
+    if (isDeletedIdsLoaded.current) {
+      saveDeletedIds(deletedIds).catch(e => console.error('Error saving deleted ids to Firebase:', e));
+    }
   }, [deletedIds]);
 
   const allPrompts = useMemo(() => {
@@ -89,7 +118,10 @@ const App: React.FC = () => {
     else if (activeTab === TabType.EDITOR) list = customPrompts.filter(p => !deletedIds.includes(p.id));
     if (!searchQuery) return list;
     const q = searchQuery.toLowerCase();
-    return list.filter(p => p.title.toLowerCase().includes(q) || p.content.toLowerCase().includes(q));
+    return list.filter(p =>
+      p.title.toLowerCase().includes(q) ||
+      p.content.toLowerCase().includes(q)
+    );
   }, [activeTab, allPrompts, favorites, customPrompts, searchQuery, deletedIds]);
 
   const toggleFavorite = (item: PromptItem) => {
@@ -139,11 +171,11 @@ const App: React.FC = () => {
       <Header
         activeTab={activeTab}
         setActiveTab={setActiveTab}
-        favoritesCount={favorites.filter(p => !deletedIds.includes(p.id)).length}
+        favoritesCount={favorites.filter(f => !deletedIds.includes(f.id)).length}
       />
-      <main className="max-w-7xl mx-auto px-4 py-10">
+      <main className="max-w-7xl mx-auto px-4 py-8">
         <div className="mb-8">
-          <h1 className="text-4xl font-black tracking-tighter uppercase text-white mb-2">
+          <h1 className="text-4xl font-black text-white uppercase tracking-tighter mb-2">
             {activeTab === TabType.LIBRARY ? 'Curated Library' : activeTab === TabType.FAVORITES ? 'My Favorites' : 'Asset Editor'}
           </h1>
           <p className="text-slate-500 text-sm">
@@ -156,19 +188,19 @@ const App: React.FC = () => {
         </div>
 
         {activeTab !== TabType.EDITOR && (
-          <SearchBar value={searchQuery} onChange={setSearchQuery} resultCount={filteredPrompts.length} />
+          <SearchBar searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
         )}
 
         {error && (
-          <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm flex justify-between">
-            {error}
-            <button onClick={() => setError(null)} className="hover:text-white">✕</button>
+          <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm flex items-center justify-between">
+            <span>{error}</span>
+            <button onClick={() => setError(null)} className="hover:text-white">&#x2715;</button>
           </div>
         )}
 
         {isLoading ? (
           <div className="flex items-center justify-center py-32">
-            <p className="text-slate-500 text-sm animate-pulse">Loading Assets...</p>
+            <p className="text-slate-500 text-sm uppercase tracking-widest animate-pulse">Loading Assets...</p>
           </div>
         ) : (
           <>
@@ -188,7 +220,7 @@ const App: React.FC = () => {
                       <PromptCard
                         key={item.id}
                         item={item}
-                        isFavorite={favorites.some(f => f.id === item.id)}
+                        isFavorite={!!favorites.find(f => f.id === item.id)}
                         onToggleFavorite={toggleFavorite}
                         onViewDetail={setSelectedPrompt}
                         onEditAI={setEditingPrompt}
@@ -212,8 +244,8 @@ const App: React.FC = () => {
         )}
       </main>
 
-      <PromptModal prompt={selectedPrompt} onClose={() => setSelectedPrompt(null)} onDelete={setPromptToDelete} />
-      <AIEditorModal prompt={editingPrompt} onClose={() => setEditingPrompt(null)} onSave={handleSaveCustom} />
+      <PromptModal item={selectedPrompt} onClose={() => setSelectedPrompt(null)} onDelete={setPromptToDelete} />
+      <AIEditorModal item={editingPrompt} onClose={() => setEditingPrompt(null)} onSave={handleSaveCustom} />
       <ConfirmModal
         isOpen={!!promptToDelete}
         onClose={() => setPromptToDelete(null)}
