@@ -12,7 +12,6 @@ import ConfirmModal from './components/ConfirmModal';
 
 const DELETED_IDS_KEY = 'nano-banana-deleted-ids';
 
-// Helper to load deleted ids synchronously from localStorage
 function loadInitialDeletedIds(): string[] {
   try {
     const saved = localStorage.getItem(DELETED_IDS_KEY);
@@ -35,7 +34,6 @@ const App: React.FC = () => {
   const [manualEditPrompt, setManualEditPrompt] = useState<PromptItem | null>(null);
   const [promptToDelete, setPromptToDelete] = useState<string | null>(null);
 
-  // Refs to prevent saving on initial mount
   const isFirstMount = useRef(true);
   const isDeletedIdsLoaded = useRef(false);
 
@@ -55,15 +53,12 @@ const App: React.FC = () => {
           if (savedCustom) setCustomPrompts(JSON.parse(savedCustom));
         }
 
-        // Load deleted ids from Firebase (persistent across devices)
         try {
           const firebaseDeletedIds = await getDeletedIds();
           if (firebaseDeletedIds.length > 0) {
             setDeletedIds(prev => [...new Set([...prev, ...firebaseDeletedIds])]);
           }
-        } catch (e) {
-          // fallback: already loaded from localStorage in initial state
-        }
+        } catch (e) {}
         isDeletedIdsLoaded.current = true;
 
         const savedFavorites = localStorage.getItem('nano-banana-favorites');
@@ -88,14 +83,12 @@ const App: React.FC = () => {
     localStorage.setItem('nano-banana-custom-prompts', JSON.stringify(customPrompts));
   }, [customPrompts]);
 
-  // Save deletedIds to both localStorage and Firebase, but skip the very first render
   useEffect(() => {
     if (isFirstMount.current) {
       isFirstMount.current = false;
       return;
     }
     localStorage.setItem(DELETED_IDS_KEY, JSON.stringify(deletedIds));
-    // Also persist to Firebase when ids have been loaded
     if (isDeletedIdsLoaded.current) {
       saveDeletedIds(deletedIds).catch(e => console.error('Error saving deleted ids to Firebase:', e));
     }
@@ -154,7 +147,7 @@ const App: React.FC = () => {
   const handleDeletePrompt = async (id: string) => {
     const isCustom = customPrompts.some(p => p.id === id);
     if (isCustom) {
-      try { await deleteFromFirestore(id); } catch (e) { /* fallback */ }
+      try { await deleteFromFirestore(id); } catch (e) {}
       setCustomPrompts(prev => prev.filter(p => p.id !== id));
     }
     setDeletedIds(prev => [...new Set([...prev, id])]);
@@ -188,7 +181,11 @@ const App: React.FC = () => {
         </div>
 
         {activeTab !== TabType.EDITOR && (
-          <SearchBar searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
+          <SearchBar 
+            value={searchQuery} 
+            onChange={setSearchQuery} 
+            count={filteredPrompts.length} 
+          />
         )}
 
         {error && (
