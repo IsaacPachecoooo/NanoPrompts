@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
 import { AIEditResponse } from "../types";
 
@@ -10,7 +9,7 @@ export const editPromptWithAI = async (originalPrompt: string, userInstruction: 
   const ai = new GoogleGenAI({ apiKey });
   
   const response = await ai.models.generateContent({
-    model: 'gemini-3-flash-preview',
+    model: 'gemini-2.0-flash',
     contents: `Original Prompt: "${originalPrompt}"\n\nUser Instruction: "${userInstruction}"`,
     config: {
       systemInstruction: "Eres un editor de prompts experto. Tu objetivo es aplicar cambios solicitados por el usuario sin alterar el estilo, calidad, estética, motor de render ni iluminación del original. Detecta placeholders. Si faltan datos, pregunta. No inventes detalles críticos. La respuesta debe ser un objeto JSON válido.",
