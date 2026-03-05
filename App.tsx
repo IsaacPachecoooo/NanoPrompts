@@ -12,6 +12,7 @@ import ConfirmModal from './components/ConfirmModal';
 
 const DELETED_IDS_KEY = 'nano-banana-deleted-ids';
 
+// Helper to load deleted ids synchronously from localStorage
 function loadInitialDeletedIds(): string[] {
   try {
     const saved = localStorage.getItem(DELETED_IDS_KEY);
@@ -35,6 +36,7 @@ const App: React.FC = () => {
   const [promptToDelete, setPromptToDelete] = useState<string | null>(null);
   const [duplicateMessage, setDuplicateMessage] = useState<string | null>(null);
 
+  // Refs to prevent saving on initial mount
   const isFirstMount = useRef(true);
   const isDeletedIdsLoaded = useRef(false);
 
@@ -54,6 +56,7 @@ const App: React.FC = () => {
           if (savedCustom) setCustomPrompts(JSON.parse(savedCustom));
         }
 
+        // Load deleted ids from Firebase (persistent across devices)
         try {
           const firebaseDeletedIds = await getDeletedIds();
           if (firebaseDeletedIds.length > 0) {
@@ -86,12 +89,14 @@ const App: React.FC = () => {
     localStorage.setItem('nano-banana-custom-prompts', JSON.stringify(customPrompts));
   }, [customPrompts]);
 
+  // Save deletedIds to both localStorage and Firebase, but skip the very first render
   useEffect(() => {
     if (isFirstMount.current) {
       isFirstMount.current = false;
       return;
     }
     localStorage.setItem(DELETED_IDS_KEY, JSON.stringify(deletedIds));
+    // Also persist to Firebase when ids have been loaded
     if (isDeletedIdsLoaded.current) {
       saveDeletedIds(deletedIds).catch(e => console.error('Error saving deleted ids to Firebase:', e));
     }
