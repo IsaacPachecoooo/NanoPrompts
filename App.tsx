@@ -11,7 +11,6 @@ import EditorTab from './components/EditorTab';
 import ConfirmModal from './components/ConfirmModal';
 
 const DELETED_IDS_KEY = 'nano-banana-deleted-ids';
-const FAVORITES_KEY = 'nano-banana-favorites';
 
 function loadInitialDeletedIds(): string[] {
   try {
@@ -21,22 +20,12 @@ function loadInitialDeletedIds(): string[] {
   return [];
 }
 
-function loadInitialFavorites(): PromptItem[] {
-  try {
-    const saved = localStorage.getItem(FAVORITES_KEY);
-    if (saved) return JSON.parse(saved);
-  } catch (e) {
-    localStorage.removeItem(FAVORITES_KEY);
-  }
-  return [];
-}
-
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>(TabType.LIBRARY);
   const [libraryPrompts, setLibraryPrompts] = useState<PromptItem[]>([]);
   const [customPrompts, setCustomPrompts] = useState<PromptItem[]>([]);
   const [deletedIds, setDeletedIds] = useState<string[]>(loadInitialDeletedIds);
-  const [favorites, setFavorites] = useState<PromptItem[]>(loadInitialFavorites);
+  const [favorites, setFavorites] = useState<PromptItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -44,10 +33,10 @@ const App: React.FC = () => {
   const [editingPrompt, setEditingPrompt] = useState<PromptItem | null>(null);
   const [manualEditPrompt, setManualEditPrompt] = useState<PromptItem | null>(null);
   const [promptToDelete, setPromptToDelete] = useState<string | null>(null);
+  const [duplicateMessage, setDuplicateMessage] = useState<string | null>(null);
 
   const isFirstMount = useRef(true);
   const isDeletedIdsLoaded = useRef(false);
-  const isFavoritesFirstRender = useRef(true);
 
   useEffect(() => {
     const loadData = async () => {
@@ -64,13 +53,22 @@ const App: React.FC = () => {
           const savedCustom = localStorage.getItem('nano-banana-custom-prompts');
           if (savedCustom) setCustomPrompts(JSON.parse(savedCustom));
         }
+
         try {
           const firebaseDeletedIds = await getDeletedIds();
           if (firebaseDeletedIds.length > 0) {
             setDeletedIds(prev => [...new Set([...prev, ...firebaseDeletedIds])]);
           }
-        } catch (e) {}
+        } catch (e) {
+          // fallback: already loaded from localStorage in initial state
+        }
         isDeletedIdsLoaded.current = true;
+
+        const savedFavorites = localStorage.getItem('nano-banana-favorites');
+        if (savedFavorites) {
+          try { setFavorites(JSON.parse(savedFavorites)); }
+          catch (e) { localStorage.removeItem('nano-banana-favorites'); }
+        }
       } catch (error) {
         setError('Failed to load library data.');
       } finally {
@@ -81,11 +79,7 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (isFavoritesFirstRender.current) {
-      isFavoritesFirstRender.current = false;
-      return;
-    }
-    localStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites));
+    localStorage.setItem('nano-banana-favorites', JSON.stringify(favorites));
   }, [favorites]);
 
   useEffect(() => {
@@ -156,7 +150,7 @@ const App: React.FC = () => {
   const handleDeletePrompt = async (id: string) => {
     const isCustom = customPrompts.some(p => p.id === id);
     if (isCustom) {
-      try { await deleteFromFirestore(id); } catch (e) {}
+      try { await deleteFromFirestore(id); } catch (e) { /* fallback */ }
       setCustomPrompts(prev => prev.filter(p => p.id !== id));
     }
     setDeletedIds(prev => [...new Set([...prev, id])]);
@@ -166,6 +160,18 @@ const App: React.FC = () => {
   const handleEditManual = (item: PromptItem) => {
     setManualEditPrompt(item);
     setActiveTab(TabType.EDITOR);
+  };
+
+  const handleDuplicate = (item: PromptItem) => {
+    const duplicatedItem: PromptItem = {
+      ...item,
+      id: `duplicate-${Date.now()}`,
+      title: `${item.title} (Copy)`,
+      isCustom: true
+    };
+    handleSaveCustom(duplicatedItem);
+    setDuplicateMessage(`"${item.title}" duplicado exitosamente`);
+    setTimeout(() => setDuplicateMessage(null), 3000);
   };
 
   return (
@@ -188,6 +194,7 @@ const App: React.FC = () => {
               : 'Create, modify, and manage your own custom visual assets and prompts.'}
           </p>
         </div>
+
         {activeTab !== TabType.EDITOR && (
           <SearchBar 
             value={searchQuery} 
@@ -195,12 +202,21 @@ const App: React.FC = () => {
             count={filteredPrompts.length} 
           />
         )}
+
         {error && (
           <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm flex items-center justify-between">
             <span>{error}</span>
-            <button onClick={() => setError(null)} className="hover:text-white">✕</button>
+            <button onClick={() => setError(null)} className="hover:text-white">&#x2715;</button>
           </div>
         )}
+
+        {duplicateMessage && (
+          <div className="mb-6 p-4 bg-green-500/10 border border-green-500/20 rounded-xl text-green-400 text-sm flex items-center justify-between">
+            <span>{duplicateMessage}</span>
+            <button onClick={() => setDuplicateMessage(null)} className="hover:text-white">&#x2715;</button>
+          </div>
+        )}
+
         {isLoading ? (
           <div className="flex items-center justify-center py-32">
             <p className="text-slate-500 text-sm uppercase tracking-widest animate-pulse">Loading Assets...</p>
@@ -229,6 +245,7 @@ const App: React.FC = () => {
                         onEditAI={setEditingPrompt}
                         onEditManual={handleEditManual}
                         onDelete={setPromptToDelete}
+                        onDuplicate={handleDuplicate}
                         onCopy={(text) => navigator.clipboard.writeText(text)}
                       />
                     ))}
@@ -246,6 +263,7 @@ const App: React.FC = () => {
           </>
         )}
       </main>
+
       <PromptModal item={selectedPrompt} onClose={() => setSelectedPrompt(null)} onDelete={setPromptToDelete} />
       <AIEditorModal item={editingPrompt} onClose={() => setEditingPrompt(null)} onSave={handleSaveCustom} />
       <ConfirmModal
@@ -260,6 +278,7 @@ const App: React.FC = () => {
         title="¿Eliminar prompt?"
         message="Esta acción no se puede deshacer. El prompt se eliminará permanentemente."
       />
+
       <footer className="border-t border-slate-800/50 mt-20 py-8 text-center text-slate-600 text-xs">
         <p className="font-bold tracking-widest uppercase mb-1">B</p>
         <p>Nano Banana Pro Collection</p>
