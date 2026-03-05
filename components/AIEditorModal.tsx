@@ -1,6 +1,8 @@
+
 import React, { useState } from 'react';
 import { PromptItem, AIEditResponse } from '../types';
 import { editPromptWithAI } from '../services/geminiService';
+import { Copy, Check } from 'lucide-react';
 
 interface AIEditorModalProps {
   item: PromptItem | null;
@@ -67,6 +69,7 @@ const AIEditorModal: React.FC<AIEditorModalProps> = ({ item, onClose, onSave }) 
             </svg>
           </button>
         </div>
+
         <div className="p-6 overflow-y-auto space-y-6">
           {/* Current Selection */}
           <div className="bg-slate-950 rounded-2xl p-4 border border-slate-800 flex gap-4">
@@ -77,6 +80,7 @@ const AIEditorModal: React.FC<AIEditorModalProps> = ({ item, onClose, onSave }) 
               <p className="text-xs text-slate-500 line-clamp-2 mt-1">{item.content}</p>
             </div>
           </div>
+
           {!result ? (
             <div className="space-y-4">
               <div>
@@ -110,37 +114,30 @@ const AIEditorModal: React.FC<AIEditorModalProps> = ({ item, onClose, onSave }) 
               <div className="bg-slate-950 rounded-2xl border border-slate-800 overflow-hidden">
                 <div className="bg-slate-800/50 px-4 py-2 border-b border-slate-800 flex justify-between items-center">
                   <span className="text-[10px] font-bold text-yellow-400 uppercase tracking-widest">Edited Result</span>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Optimized for Gemini</span>
-                    <button
-                      onClick={handleCopy}
-                      title="Copy to clipboard"
-                      className="flex items-center gap-1 px-3 py-1 bg-slate-700 hover:bg-yellow-400 hover:text-slate-950 text-slate-300 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all"
-                    >
-                      {copied ? (
-                        <>
-                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                          </svg>
-                          Copied!
-                        </>
-                      ) : (
-                        <>
-                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                          </svg>
-                          Copy
-                        </>
-                      )}
-                    </button>
-                  </div>
+                  <button
+                    onClick={handleCopy}
+                    className="flex items-center gap-1 px-3 py-1 bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all"
+                  >
+                    {copied ? (
+                      <>
+                        <Check size={12} />
+                        Copied!
+                      </>
+                    ) : (
+                      <>
+                        <Copy size={12} />
+                        Copy
+                      </>
+                    )}
+                  </button>
                 </div>
                 <div className="p-4">
-                  <p className="font-mono text-sm text-slate-300 leading-relaxed select-all">
-                    {result.editedPrompt}
-                  </p>
+                   <p className="font-mono text-sm text-slate-300 leading-relaxed select-all">
+                     {result.editedPrompt}
+                   </p>
                 </div>
               </div>
+
               {result.changesMade.length > 0 && (
                 <div>
                   <h5 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Modifications Applied</h5>
@@ -153,6 +150,7 @@ const AIEditorModal: React.FC<AIEditorModalProps> = ({ item, onClose, onSave }) 
                   </div>
                 </div>
               )}
+
               <div className="flex gap-4">
                 <button 
                   onClick={() => setResult(null)}
