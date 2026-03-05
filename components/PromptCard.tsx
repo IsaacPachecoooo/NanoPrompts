@@ -1,6 +1,6 @@
 import React from 'react';
 import { PromptItem } from '../types';
-import { Trash2, Edit3, Copy, Sparkles, Star, Copy2 } from 'lucide-react';
+import { Trash2, Edit3, Copy, Sparkles, Star, Files } from 'lucide-react';
 
 interface PromptCardProps {
   item: PromptItem;
@@ -97,7 +97,7 @@ const PromptCard: React.FC<PromptCardProps> = ({
             className="flex-1 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg text-xs font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-1.5"
             title="Duplicar prompt"
           >
-            <Copy2 size={14} />
+            <Files size={14} />
             Duplicate
           </button>
 
