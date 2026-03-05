@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertTriangle, X } from 'lucide-react';
@@ -51,8 +52,10 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({ isOpen, onClose, onConfirm,
                 <X size={20} />
               </button>
             </div>
+
             <h3 className="text-xl font-bold text-white uppercase tracking-tight mb-2">{title}</h3>
             <p className="text-slate-400 text-sm leading-relaxed mb-6">{message}</p>
+
             <div className="mb-6">
               <label className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 block">
                 Escribe <span className="text-red-400">borrar</span> para confirmar
@@ -67,6 +70,7 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({ isOpen, onClose, onConfirm,
                 autoComplete="off"
               />
             </div>
+
             <div className="flex gap-4">
               <button
                 onClick={handleClose}
@@ -77,7 +81,7 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({ isOpen, onClose, onConfirm,
               <button
                 onClick={handleConfirm}
                 disabled={!isValid}
-                className="flex-1 px-6 py-3 rounded-xl font-bold text-xs uppercase tracking-widest bg-red-500 text-white hover:bg-red-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-lg shadow-red-500/20"
+                className="flex-1 px-6 py-3 rounded-xl font-bold text-xs uppercase tracking-widest bg-red-500 text-white hover:bg-red-600 disabled:bg-slate-700 disabled:text-slate-500 transition-all shadow-lg shadow-red-500/20"
               >
                 Eliminar
               </button>
