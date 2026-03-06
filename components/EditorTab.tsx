@@ -1,7 +1,6 @@
-
 import React, { useState } from 'react';
 import { PromptItem } from '../types';
-import { Plus, Edit2, Trash2, Save, X, Image as ImageIcon } from 'lucide-react';
+import { Plus, Edit2, Trash2, Save, X, Image as ImageIcon, Copy } from 'lucide-react';
 
 interface EditorTabProps {
   prompts: PromptItem[];
@@ -11,9 +10,9 @@ interface EditorTabProps {
   onClearInitialEdit?: () => void;
 }
 
-const EditorTab: React.FC<EditorTabProps> = ({ 
-  prompts, 
-  onSavePrompt, 
+const EditorTab: React.FC<EditorTabProps> = ({
+  prompts,
+  onSavePrompt,
   onDeletePrompt,
   initialEditPrompt,
   onClearInitialEdit
@@ -50,6 +49,16 @@ const EditorTab: React.FC<EditorTabProps> = ({
     });
   };
 
+  const handleDuplicate = (prompt: PromptItem) => {
+    const duplicated: PromptItem = {
+      ...prompt,
+      id: `custom-${Date.now()}`,
+      title: `${prompt.title} (Copy)`,
+      isCustom: true
+    };
+    onSavePrompt(duplicated);
+  };
+
   const cancelEdit = () => {
     setEditingId(null);
     setIsCreating(false);
@@ -64,15 +73,15 @@ const EditorTab: React.FC<EditorTabProps> = ({
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="flex justify-between items-center">
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-xl font-bold text-white uppercase tracking-tight">Prompt Workshop</h3>
-          <p className="text-slate-500 text-xs font-medium uppercase tracking-widest mt-1">Create and manage your custom visual assets</p>
+          <h3 className="text-xl font-black text-white uppercase tracking-widest">Prompt Workshop</h3>
+          <p className="text-xs text-slate-500 mt-1">Create and manage your custom visual assets</p>
         </div>
         <button
           onClick={startCreate}
-          className="bg-yellow-400 text-slate-950 px-6 py-2 rounded-xl font-bold text-xs uppercase tracking-widest flex items-center gap-2 hover:bg-yellow-300 transition-colors shadow-lg shadow-yellow-400/10"
+          className="bg-yellow-400 text-slate-950 px-5 py-2 rounded-xl font-bold text-xs uppercase tracking-widest flex items-center gap-2 hover:bg-yellow-300 transition-colors"
         >
           <Plus size={16} />
           New Prompt
@@ -80,64 +89,68 @@ const EditorTab: React.FC<EditorTabProps> = ({
       </div>
 
       {(isCreating || editingId) && (
-        <div className="bg-slate-900/50 border border-slate-800 rounded-3xl p-8 space-y-6 backdrop-blur-sm">
-          <div className="flex justify-between items-center">
-            <h4 className="text-sm font-black text-yellow-400 uppercase tracking-[0.2em]">
-              {isCreating ? 'Create New Asset' : 'Edit Asset'}
-            </h4>
-            <button onClick={cancelEdit} className="text-slate-500 hover:text-white transition-colors">
-              <X size={20} />
-            </button>
-          </div>
+        <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6 space-y-4">
+          <h4 className="font-bold text-white text-sm uppercase tracking-widest">
+            {isCreating ? 'Create New Asset' : 'Edit Asset'}
+          </h4>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="space-y-4">
-              <div>
-                <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Asset Title</label>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="col-span-2">
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Asset Title</label>
+              <input
+                type="text"
+                value={formData.title || ''}
+                onChange={e => setFormData({ ...formData, title: e.target.value })}
+                placeholder="e.g. CYBERPUNK CITYSCAPE"
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-yellow-400/50 transition-colors"
+              />
+            </div>
+
+            <div className="col-span-2">
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Image URL / Asset Path</label>
+              <div className="relative">
+                <ImageIcon size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
                 <input
                   type="text"
-                  value={formData.title || ''}
-                  onChange={e => setFormData({ ...formData, title: e.target.value })}
-                  placeholder="e.g. CYBERPUNK CITYSCAPE"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-yellow-400/50 transition-colors"
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Image URL / Asset Path</label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={formData.imageUrl || ''}
-                    onChange={e => setFormData({ ...formData, imageUrl: e.target.value })}
-                    placeholder="https://..."
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm pl-11 focus:outline-none focus:border-yellow-400/50 transition-colors"
-                  />
-                  <ImageIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600" size={18} />
-                </div>
-              </div>
-              <div>
-                <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Category</label>
-                <input
-                  type="text"
-                  value={formData.category || ''}
-                  onChange={e => setFormData({ ...formData, category: e.target.value })}
-                  placeholder="e.g. ARCHITECTURE"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-yellow-400/50 transition-colors"
+                  value={formData.imageUrl || ''}
+                  onChange={e => setFormData({ ...formData, imageUrl: e.target.value })}
+                  placeholder="https://..."
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm pl-11 focus:outline-none focus:border-yellow-400/50 transition-colors"
                 />
               </div>
             </div>
 
-            <div className="space-y-4">
-              <div>
-                <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Visual Prompt String</label>
-                <textarea
-                  value={formData.content || ''}
-                  onChange={e => setFormData({ ...formData, content: e.target.value })}
-                  placeholder="Describe the visual asset in detail..."
-                  rows={8}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-yellow-400/50 transition-colors resize-none"
-                />
-              </div>
+            <div>
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Category</label>
+              <input
+                type="text"
+                value={formData.category || ''}
+                onChange={e => setFormData({ ...formData, category: e.target.value })}
+                placeholder="e.g. ARCHITECTURE"
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-yellow-400/50 transition-colors"
+              />
+            </div>
+
+            <div>
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Engine</label>
+              <input
+                type="text"
+                value={formData.engine || ''}
+                onChange={e => setFormData({ ...formData, engine: e.target.value })}
+                placeholder="e.g. Midjourney"
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-yellow-400/50 transition-colors"
+              />
+            </div>
+
+            <div className="col-span-2">
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Visual Prompt String</label>
+              <textarea
+                value={formData.content || ''}
+                onChange={e => setFormData({ ...formData, content: e.target.value })}
+                placeholder="Describe the visual asset in detail..."
+                rows={8}
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-yellow-400/50 transition-colors resize-none"
+              />
             </div>
           </div>
 
@@ -161,8 +174,8 @@ const EditorTab: React.FC<EditorTabProps> = ({
 
       <div className="grid grid-cols-1 gap-4">
         {prompts.map(prompt => (
-          <div 
-            key={prompt.id} 
+          <div
+            key={prompt.id}
             className="group bg-slate-900/30 border border-slate-900 rounded-2xl p-4 flex items-center justify-between hover:border-slate-800 transition-all"
           >
             <div className="flex items-center gap-4">
@@ -182,16 +195,22 @@ const EditorTab: React.FC<EditorTabProps> = ({
                 </p>
               </div>
             </div>
-            
             <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-              <button 
+              <button
                 onClick={() => startEdit(prompt)}
                 className="p-2 text-slate-400 hover:text-yellow-400 hover:bg-yellow-400/10 rounded-lg transition-all"
                 title="Edit Asset"
               >
                 <Edit2 size={18} />
               </button>
-              <button 
+              <button
+                onClick={() => handleDuplicate(prompt)}
+                className="p-2 text-slate-400 hover:text-blue-400 hover:bg-blue-400/10 rounded-lg transition-all"
+                title="Duplicate Asset"
+              >
+                <Copy size={18} />
+              </button>
+              <button
                 onClick={() => onDeletePrompt(prompt.id)}
                 className="p-2 text-red-500/50 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all"
                 title="Delete Asset"
@@ -201,7 +220,6 @@ const EditorTab: React.FC<EditorTabProps> = ({
             </div>
           </div>
         ))}
-
         {prompts.length === 0 && (
           <div className="text-center py-20 border-2 border-dashed border-slate-900 rounded-3xl">
             <p className="text-slate-600 font-bold uppercase tracking-widest text-xs">No custom assets yet</p>
