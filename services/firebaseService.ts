@@ -88,3 +88,28 @@ export const saveDeletedIds = async (ids: string[]): Promise<void> => {
     console.error('Error saving deleted ids:', e);
   }
 };
+
+
+const FAVORITES_DOC = 'favorites';
+
+export const getFavoriteIds = async (): Promise<string[]> => {
+  try {
+    const docRef = doc(db, SETTINGS_COLLECTION, FAVORITES_DOC);
+    const snap = await getDoc(docRef);
+    if (snap.exists()) {
+      return snap.data().ids || [];
+    }
+    return [];
+  } catch (e) {
+    return [];
+  }
+};
+
+export const saveFavoriteIds = async (ids: string[]): Promise<void> => {
+  try {
+    const docRef = doc(db, SETTINGS_COLLECTION, FAVORITES_DOC);
+    await setDoc(docRef, { ids });
+  } catch (e) {
+    console.error('Error saving favorite ids:', e);
+  }
+};
