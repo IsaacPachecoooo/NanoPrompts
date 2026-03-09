@@ -13,6 +13,9 @@ export default defineConfig(({ mode }) => {
         host: '0.0.0.0',
       },
       plugins: [react(), tailwindcss()],
+      optimizeDeps: {
+        include: ['react', 'react-dom', '@google/genai', 'firebase'],
+      },
       define: {
         'process.env.GEMINI_API_KEY': JSON.stringify(apiKey),
         'process.env.API_KEY': JSON.stringify(apiKey),
@@ -20,6 +23,21 @@ export default defineConfig(({ mode }) => {
       resolve: {
         alias: {
           '@': path.resolve(__dirname, '.'),
+        },
+      },
+      build: {
+        target: 'ES2022',
+        minify: 'terser',
+        sourcemap: false,
+        chunkSizeWarningLimit: 600,
+        rollupOptions: {
+          output: {
+            manualChunks: {
+              'vendor': ['react', 'react-dom'],
+              'genai': ['@google/genai'],
+              'motion': ['framer-motion', 'motion'],
+            },
+          },
         },
       },
     };
