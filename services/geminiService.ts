@@ -1,4 +1,3 @@
-// Force redeploy
 import { GoogleGenAI, Type } from "@google/genai";
 import { AIEditResponse } from "../types";
 
@@ -8,12 +7,12 @@ export const editPromptWithAI = async (originalPrompt: string, userInstruction: 
     throw new Error("VITE_GEMINI_API_KEY is not configured.");
   }
   const ai = new GoogleGenAI({ apiKey });
-  
+
   const response = await ai.models.generateContent({
-    model: ''gemini-2.0-flash-exp',
-        contents: `Original Prompt: "${originalPrompt}"\n\nUser Instruction: "${userInstruction}"`,,
+    model: 'gemini-2.0-flash-exp',
+    contents: `Original Prompt: "${originalPrompt}"\n\nUser Instruction: "${userInstruction}"`,
     config: {
-      systemInstruction: "Eres un editor de prompts experto. Tu objetivo es aplicar cambios solicitados por el usuario sin alterar el estilo, calidad, estética, motor de render ni iluminación del original. Detecta placeholders. Si faltan datos, pregunta. No inventes detalles críticos. La respuesta debe ser un objeto JSON válido.",
+      systemInstruction: "Eres un editor de prompts experto. Tu objetivo es aplicar cambios solicitados por el usuario sin alterar el estilo, calidad, estetica, motor de render ni iluminacion del original. Detecta placeholders. Si faltan datos, pregunta. No inventes detalles criticos. La respuesta debe ser un objeto JSON valido.",
       responseMimeType: "application/json",
       responseSchema: {
         type: Type.OBJECT,
@@ -30,7 +29,7 @@ export const editPromptWithAI = async (originalPrompt: string, userInstruction: 
           changesMade: {
             type: Type.ARRAY,
             items: { type: Type.STRING },
-            description: "Lista de cambios específicos realizados."
+            description: "Lista de cambios especificos realizados."
           },
           assumptions: {
             type: Type.ARRAY,
@@ -44,7 +43,9 @@ export const editPromptWithAI = async (originalPrompt: string, userInstruction: 
   });
 
   try {
-    const result = JSON.parse(response.text || "{}");
+    const text = response.text;
+    if (!text) throw new Error("Empty response from AI.");
+    const result = JSON.parse(text);
     return {
       questions: result.questions || [],
       editedPrompt: result.editedPrompt || originalPrompt,
