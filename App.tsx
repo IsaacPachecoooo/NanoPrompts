@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { PromptItem, TabType } from './types';
 import { parsePromptsFromMarkdown } from './services/promptParser';
-import { getPrompts, savePrompt, updatePrompt, deletePrompt as deleteFromFirestore, getDeletedIds, saveDeletedIds } from './services/firebaseService';
+import { getPrompts, savePrompt, updatePrompt, deletePrompt as deleteFromFirestore, getDeletedIds, saveDeletedIds, getFavoriteIds, saveFavoriteIds } from './services/firebaseService';
 import Header from './components/Header';
 import SearchBar from './components/SearchBar';
 import PromptCard from './components/PromptCard';
@@ -39,6 +39,7 @@ const App: React.FC = () => {
   // Refs to prevent saving on initial mount
   const isFirstMount = useRef(true);
   const isDeletedIdsLoaded = useRef(false);
+  const isFavoritesLoaded = useRef(false);
 
   useEffect(() => {
     const loadData = async () => {
@@ -67,11 +68,28 @@ const App: React.FC = () => {
         }
         isDeletedIdsLoaded.current = true;
 
-        const savedFavorites = localStorage.getItem('nano-banana-favorites');
-        if (savedFavorites) {
-          try { setFavorites(JSON.parse(savedFavorites)); }
-          catch (e) { localStorage.removeItem('nano-banana-favorites'); }
+        // Load favorites from Firebase (persistent across devices and browsers)
+        try {
+          const firebaseFavoriteIds = await getFavoriteIds();
+          if (firebaseFavoriteIds.length > 0) {
+            // Get the full prompt objects for favorites
+            const allPrompts = [...fetchedPrompts];
+            try {
+              const firestorePrompts = await getPrompts();
+              allPrompts.push(...firestorePrompts);
+            } catch (e) {}
+            const favoritePrompts = allPrompts.filter(p => firebaseFavoriteIds.includes(p.id));
+            setFavorites(favoritePrompts);
+          }
+        } catch (e) {
+          // fallback to localStorage
+          const savedFavorites = localStorage.getItem('nano-banana-favorites');
+          if (savedFavorites) {
+            try { setFavorites(JSON.parse(savedFavorites)); }
+            catch (e) { localStorage.removeItem('nano-banana-favorites'); }
+          }
         }
+        isFavoritesLoaded.current = true;
       } catch (error) {
         setError('Failed to load library data.');
       } finally {
@@ -82,7 +100,13 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    // Save to localStorage
     localStorage.setItem('nano-banana-favorites', JSON.stringify(favorites));
+    // Also save to Firebase when favorites have been loaded
+    if (isFavoritesLoaded.current) {
+      const favoriteIds = favorites.map(f => f.id);
+      saveFavoriteIds(favoriteIds).catch(e => console.error('Error saving favorites to Firebase:', e));
+    }
   }, [favorites]);
 
   useEffect(() => {
@@ -128,8 +152,14 @@ const App: React.FC = () => {
   const toggleFavorite = (item: PromptItem) => {
     setFavorites(prev => {
       const exists = prev.find(p => p.id === item.id);
-      return exists ? prev.filter(p => p.id !== item.id) : [...prev, item];
+      if (exists) {
+        return prev.filter(p => p.id !== item.id);
+      } else {
+        return [...prev, item];
+      }
     });
+    // Mark favorites as loaded so they get saved to Firebase
+    isFavoritesLoaded.current = true;
   };
 
   const handleSaveCustom = async (item: PromptItem) => {
