@@ -11,7 +11,7 @@ export const editPromptWithAI = async (originalPrompt: string, userInstruction: 
   const promptText = `Original Prompt: "${originalPrompt}"\n\nUser Instruction: "${userInstruction}"`;
 
   const response = await ai.models.generateContent({
-    model: 'gemini-1.5-flash',
+    model: 'gemini-2.5-flash',
     contents: promptText,
     config: {
       systemInstruction: "Eres un editor de prompts experto. Tu objetivo es aplicar cambios solicitados por el usuario sin alterar el estilo, calidad, estetica, motor de render ni iluminacion del original. Detecta placeholders. Si faltan datos, pregunta. No inventes detalles criticos. Responde SOLO con un objeto JSON valido sin markdown ni explicaciones adicionales.",
