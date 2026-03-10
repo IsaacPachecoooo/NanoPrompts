@@ -57,10 +57,10 @@ const AIEditorModal: React.FC<AIEditorModalProps> = ({ item, onClose, onSave }) 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
       <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-md" onClick={onClose} />
-      <div className="relative w-full max-w-2xl bg-slate-900 rounded-3xl border border-slate-800 shadow-2xl overflow-hidden">
-        <div className="relative">
-          <div className="bg-gradient-to-br from-yellow-400/10 to-transparent p-8">
-            <div className="flex justify-between items-start mb-6">
+      <div className="relative w-full max-w-2xl bg-slate-900 rounded-3xl border border-slate-800 shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+        <div className="relative flex flex-col flex-1 overflow-hidden">
+          <div className="bg-gradient-to-br from-yellow-400/10 to-transparent p-8 flex flex-col flex-1 overflow-hidden">
+            <div className="flex justify-between items-start mb-6 flex-shrink-0">
               <div>
                 <h3 className="text-xl font-black text-white uppercase tracking-widest">
                   AI PROMPT <span className="text-yellow-400"> EDITOR </span>
@@ -73,13 +73,11 @@ const AIEditorModal: React.FC<AIEditorModalProps> = ({ item, onClose, onSave }) 
                 </svg>
               </button>
             </div>
-
-            <div className="bg-slate-950/50 rounded-2xl p-4 mb-6 border border-slate-800">
+            <div className="bg-slate-950/50 rounded-2xl p-4 mb-6 border border-slate-800 flex-shrink-0">
               <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Editing base</p>
               <h4 className="font-bold text-white text-sm uppercase tracking-tight">{item.title}</h4>
               <p className="text-xs text-slate-400 mt-1 line-clamp-2">{item.content}</p>
             </div>
-
             {!result ? (
               <div className="space-y-4">
                 <div>
@@ -115,9 +113,9 @@ const AIEditorModal: React.FC<AIEditorModalProps> = ({ item, onClose, onSave }) 
                 </button>
               </div>
             ) : (
-              <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <div className="bg-slate-950 rounded-2xl border border-slate-800 overflow-hidden">
-                  <div className="bg-slate-800/50 px-4 py-2 border-b border-slate-800 flex justify-between items-center">
+              <div className="flex flex-col flex-1 overflow-hidden space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div className="bg-slate-950 rounded-2xl border border-slate-800 overflow-hidden flex flex-col flex-1 min-h-0">
+                  <div className="bg-slate-800/50 px-4 py-2 border-b border-slate-800 flex justify-between items-center flex-shrink-0">
                     <span className="text-[10px] font-bold text-yellow-400 uppercase tracking-widest">Edited Result</span>
                     <button
                       onClick={handleCopy}
@@ -130,15 +128,14 @@ const AIEditorModal: React.FC<AIEditorModalProps> = ({ item, onClose, onSave }) 
                       )}
                     </button>
                   </div>
-                  <div className="p-4">
+                  <div className="p-4 overflow-y-auto flex-1">
                     <p className="font-mono text-sm text-slate-300 leading-relaxed select-all">
                       {result.editedPrompt}
                     </p>
                   </div>
                 </div>
-
                 {result.changesMade.length > 0 && (
-                  <div>
+                  <div className="flex-shrink-0">
                     <h5 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Modifications Applied</h5>
                     <div className="flex flex-wrap gap-2">
                       {result.changesMade.map((change, i) => (
@@ -149,8 +146,7 @@ const AIEditorModal: React.FC<AIEditorModalProps> = ({ item, onClose, onSave }) 
                     </div>
                   </div>
                 )}
-
-                <div className="flex gap-4">
+                <div className="flex gap-4 flex-shrink-0">
                   <button
                     onClick={() => setResult(null)}
                     className="flex-1 py-4 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-2xl border border-slate-700 uppercase tracking-widest transition-all"
