@@ -11,19 +11,15 @@ export const editPromptWithAI = async (originalPrompt: string, userInstruction: 
   const promptText = `Original Prompt: "${originalPrompt}"\n\nUser Instruction: "${userInstruction}"`;
 
   const response = await ai.models.generateContent({
-    model: 'gemini-2.0-flash-exp',
+    model: 'gemini-1.5-flash',
     contents: promptText,
     config: {
-      systemInstruction: "Eres un editor de prompts experto. Tu objetivo es aplicar cambios solicitados por el usuario sin alterar el estilo, calidad, estetica, motor de render ni iluminacion del original. Detecta placeholders. Si faltan datos, pregunta. No inventes detalles criticos. La respuesta debe ser un objeto JSON valido.",
+      systemInstruction: "Eres un editor de prompts experto. Tu objetivo es aplicar cambios solicitados por el usuario sin alterar el estilo, calidad, estetica, motor de render ni iluminacion del original. Detecta placeholders. Si faltan datos, pregunta. No inventes detalles criticos. Responde SOLO con un objeto JSON valido sin markdown ni explicaciones adicionales.",
       responseMimeType: "application/json",
+      temperature: 0.7,
       responseSchema: {
         type: Type.OBJECT,
         properties: {
-          questions: {
-            type: Type.ARRAY,
-            items: { type: Type.STRING },
-            description: "Preguntas pendientes si el input es ambiguo."
-          },
           editedPrompt: {
             type: Type.STRING,
             description: "El prompt final editado."
@@ -32,6 +28,11 @@ export const editPromptWithAI = async (originalPrompt: string, userInstruction: 
             type: Type.ARRAY,
             items: { type: Type.STRING },
             description: "Lista de cambios especificos realizados."
+          },
+          questions: {
+            type: Type.ARRAY,
+            items: { type: Type.STRING },
+            description: "Preguntas pendientes si el input es ambiguo."
           },
           assumptions: {
             type: Type.ARRAY,
