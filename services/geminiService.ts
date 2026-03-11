@@ -25,6 +25,48 @@ const extractJSON = (text: string): string => {
   return text;
 }
 
+/**
+ * Detecta si la instrucción del usuario menciona usar una foto/imagen de referencia
+ */
+const detectsFaceReference = (instruction: string): boolean => {
+  const lower = instruction.toLowerCase();
+  const keywords = [
+    'mi foto', 'my photo', 'my face', 'mi cara', 'mi rostro',
+    'reference image', 'imagen de referencia', 'foto de referencia',
+    'face reference', 'referencia de cara', 'referencia facial',
+    'use my', 'usa mi', 'con mi foto', 'with my photo',
+    'my reference', 'mi referencia', 'uploaded image', 'uploaded photo',
+    'imagen subida', 'foto subida', 'face identity', 'identidad facial',
+    'preserve my face', 'mantener mi cara', 'keep my face',
+    'use reference', 'usa referencia', 'usar referencia'
+  ];
+  return keywords.some(kw => lower.includes(kw));
+};
+
+/**
+ * Inyecta el bloque de referencia facial en un JSON de prompt
+ */
+const injectFaceReference = (jsonObj: any): any => {
+  const referenceBlock = {
+    face_identity: "uploaded reference image",
+    identity_lock: true,
+    face_preservation: "100% identical facial structure, proportions, eyes, nose, lips, brows, skin texture, moles, and expression"
+  };
+
+  // Si ya existe image_prompt en el objeto
+  if (jsonObj.image_prompt) {
+    jsonObj.image_prompt.reference = referenceBlock;
+  } else {
+    // Buscar el primer objeto anidado que parezca ser el prompt principal
+    const topLevelKeys = Object.keys(jsonObj);
+    if (topLevelKeys.length > 0) {
+      // Intentar agregar reference al nivel raiz
+      jsonObj.reference = referenceBlock;
+    }
+  }
+  return jsonObj;
+};
+
 export const editPromptWithAI = async (originalPrompt: string, userInstruction: string): Promise<AIEditResponse> => {
   const apiKey = (import.meta as any).env.VITE_GEMINI_API_KEY;
   if (!apiKey) {
@@ -41,6 +83,9 @@ export const editPromptWithAI = async (originalPrompt: string, userInstruction: 
   } catch (e) {
     isJsonPrompt = false;
   }
+
+  // Detectar si el usuario quiere usar foto de referencia
+  const usesFaceReference = detectsFaceReference(userInstruction);
 
   // Preparar instrucción del sistema según el formato
   const systemInstruction = isJsonPrompt
@@ -96,7 +141,13 @@ export const editPromptWithAI = async (originalPrompt: string, userInstruction: 
     if (isJsonPrompt) {
       try {
         // Validar que sea JSON válido
-        JSON.parse(editedPrompt);
+        let parsedEdited = JSON.parse(editedPrompt);
+
+        // Si el usuario mencionó foto de referencia, inyectar el bloque
+        if (usesFaceReference) {
+          parsedEdited = injectFaceReference(parsedEdited);
+          editedPrompt = JSON.stringify(parsedEdited, null, 2);
+        }
       } catch (e) {
         // Si no es JSON válido, intentar parsearlo
         console.warn("Edited prompt is not valid JSON, attempting to fix...");
@@ -104,10 +155,15 @@ export const editPromptWithAI = async (originalPrompt: string, userInstruction: 
       }
     }
     
+    const changesMadeList = result.changesMade || [];
+    if (usesFaceReference && isJsonPrompt) {
+      changesMadeList.push("Bloque 'reference' de identidad facial añadido al JSON");
+    }
+
     return {
       questions: result.questions || [],
       editedPrompt: editedPrompt,
-      changesMade: result.changesMade || [],
+      changesMade: changesMadeList,
       assumptions: result.assumptions || []
     };
   } catch (e) {
